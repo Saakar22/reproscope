@@ -1,0 +1,25 @@
+{
+  "_note": "Answer key for tests/fixtures/planted_repo. Facts the deterministic stages must find.",
+  "scan": {
+    "entrypoints": ["baseline.py", "train.py", "train_gpu.py"],
+    "args": {"train.py": {"--lr": 0.01, "--hidden": 64, "--epochs": 200, "--config": null, "--out": "results.json"},
+             "baseline.py": {"--seed": 0}},
+    "readme_commands": ["python train.py --out results.json", "python baseline.py", "python train_gpu.py"],
+    "requirements": {"scikit-learn": "none", "numpy": "range", "pyyaml": "exact"},
+    "python_version": "3.10",
+    "seed_files": ["baseline.py"],
+    "unseeded_split": {"file": "train.py", "test_size": 0.3},
+    "seeded_split": {"file": "baseline.py", "test_size": 0.2},
+    "metric_average": {"file": "train.py", "average": "micro"},
+    "gpu_only_files": ["train_gpu.py"],
+    "config_values": {"configs/mlp128.yaml": {"hidden": 128, "lr": 0.01, "epochs": 200}}
+  },
+  "planted": {
+    "P1": "PARAM_MISMATCH lr: paper 0.001 vs train.py default 0.01",
+    "P2": "SPLIT_MISMATCH: paper 80/20 vs train.py test_size=0.3",
+    "P3": "SEED_NOT_SET in train.py",
+    "P4": "METRIC_DEFINITION: paper macro-F1 vs code average='micro'",
+    "P5": "DEPS_UNPINNED: scikit-learn has no version",
+    "P6": "GPU_ONLY: train_gpu.py -> NOT_RUN"
+  }
+}

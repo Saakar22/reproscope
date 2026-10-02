@@ -1,0 +1,103 @@
+{% if r.is_fixture %}
+> **SAMPLE FIXTURE — NOT A REAL ANALYSIS.** {{ r.fixture_note }}
+
+{% endif %}
+# Reproducibility report: {{ r.job.paper_title or r.job.pdf_filename or r.job.id }}
+
+- **Repository:** {{ r.job.repo_url or r.job.repo_filename or "—" }}{% if r.job.repo_commit %} @ `{{ r.job.repo_commit[:12] }}`{% endif %}
+
+- **Job:** `{{ r.job.id }}` · created {{ r.job.created_at }} · report generated {{ r.generated_at }}
+- **LLM mode:** {{ r.job.llm_mode }}{% if r.job.llm_mode == "dev" %} (development samples were used for LLM stages; they are not real LLM analysis){% endif %}
+
+
+## Summary
+
+| Claims | Grounded | Reproduced | Partial | Not reproduced | Inconclusive | Not run | No metric | Unverified |
+|---|---|---|---|---|---|---|---|---|
+| {{ r.summary.total_claims }} | {{ r.summary.grounded_claims }} | {{ r.summary.reproduced }} | {{ r.summary.partial }} | {{ r.summary.not_reproduced }} | {{ r.summary.inconclusive }} | {{ r.summary.not_run }} | {{ r.summary.no_metric }} | {{ r.summary.unverified }} |
+
+{% if r.summary.better_than_reported %}
+{{ r.summary.better_than_reported }} claim(s) obtained a result better than reported beyond tolerance; this is flagged for review, not counted as reproduced.
+
+{% endif %}
+**Checklist:** seed set: {{ r.checklist.seed_set }} · dependencies pinned: {{ r.checklist.deps_pinned }} · all hyperparameters stated: {{ r.checklist.all_hparams_stated }} · data split stated: {{ r.checklist.split_stated }}
+
+## Results
+
+| Claim | Experiment | Metric | Reported | Obtained | Δ | Tolerance | Verdict |
+|---|---|---|---|---|---|---|---|
+{% for c in r.claims %}
+| {{ c.id }} | {{ c.experiment | cell }} | {{ c.metric }}{% if c.unit == "percent" %} (%){% endif %} | {{ c.reported_value | fmt }}{% if c.reported_std is not none %} ± {{ c.reported_std | fmt }}{% endif %} | {{ (c.comparison.obtained if c.comparison else none) | fmt }} | {{ (c.comparison.abs_delta if c.comparison else none) | signed }} | {{ (c.comparison.tolerance if c.comparison else none) | fmt }} | {{ c.comparison.verdict if c.comparison else "—" }} |
+{% endfor %}
+
+## Claims and evidence
+{% for c in r.claims %}
+
+### {{ c.id }} — {{ c.experiment }}
+
+- **Paper (p. {{ c.page }}{% if c.source %}, {{ c.source }}{% endif %}):** "{{ c.quote }}"
+- **Grounding:** {% if c.grounded %}verified in PDF text{% else %}NOT verified — excluded from scoring{% endif %} (quote match {{ c.grounding.quote_score | fmt(0) }}, number found: {{ c.grounding.number_found }})
+{% if c.comparison %}
+- **Verdict:** {{ c.comparison.verdict }}{% if c.comparison.tolerance_basis %} (tolerance: {{ c.comparison.tolerance_basis }}){% endif %}
+
+{% if c.comparison.note %}
+- **Note:** {{ c.comparison.note }}
+{% endif %}
+{% endif %}
+{% for fid in c.finding_ids %}
+{% set f = findings[fid] %}
+- **{{ f.id }} {{ f.rule }} ({{ f.severity }}):** {{ f.summary }}{% for e in f.repo_evidence %} `{{ e.file }}{% if e.line %}:{{ e.line }}{% endif %}`{% endfor %}
+
+{% if f.test %}
+  - Hypothesis rerun: {{ f.test.statement }}
+{% endif %}
+{% endfor %}
+{% for h in c.hypotheses %}
+- **Possible cause ({{ h.likelihood }}):** {{ h.text }} [{{ h.evidence_ids | join(", ") }}]
+{% endfor %}
+{% endfor %}
+
+## All findings
+
+| ID | Rule | Severity | Claim | Summary | Evidence |
+|---|---|---|---|---|---|
+{% for f in r.findings %}
+| {{ f.id }} | {{ f.rule }} | {{ f.severity }} | {{ f.claim_id or "paper" }} | {{ f.summary | cell }} | {% for e in f.repo_evidence %}`{{ e.file }}{% if e.line %}:{{ e.line }}{% endif %}` {% endfor %}{% if f.paper_evidence %}p.{{ f.paper_evidence.page }}{% endif %} |
+{% endfor %}
+
+## Runs
+
+| Run | Claim | Kind | Command | Status | Exit | Seconds |
+|---|---|---|---|---|---|---|
+{% for run in r.runs %}
+| {{ run.id }} | {{ run.claim_id }} | {{ run.kind }} | `{{ run.command | cell }}` | {{ run.status }} | {{ run.exit_code if run.exit_code is not none else "—" }} | {{ run.seconds | fmt(1) }} |
+{% endfor %}
+
+{% if r.reruns %}
+## User-approved hypothesis reruns
+
+{% for u in r.reruns %}
+- **{{ u.id }}** ({{ u.status }}): `{{ u.argv | join(" ") | cell }}` × {{ u.repeats }}{% if u.note %} — {{ u.note }}{% endif %}
+
+{% for cid, res in u.results.items() %}
+  - {{ cid }}: {{ res.statement }}
+{% endfor %}
+{% if u.error %}
+  - Error: {{ u.error }}
+{% endif %}
+{% endfor %}
+
+{% endif %}
+## Deviations made by ReproScope
+
+{% for d in r.deviations %}
+- **{{ d.id }}** ({{ d.kind }}{% if d.run_id %}, {{ d.run_id }}{% endif %}): {{ d.detail }}
+{% else %}
+None.
+{% endfor %}
+
+## Tolerance policy
+
+{% for key, text in r.tolerance_policy.items() %}
+- **{{ key }}:** {{ text }}
+{% endfor %}

@@ -1,0 +1,25 @@
+# secrets
+.env
+backend/.env
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# runtime data (database, uploaded papers, repo copies, logs)
+backend/data/
+
+# node
+frontend/node_modules/
+frontend/dist/
+
+# unrelated earlier work kept locally
+_other-work/
+
+# local tooling (machine-specific paths)
+.claude/
+
+# submission deck (kept local)
+presentation/

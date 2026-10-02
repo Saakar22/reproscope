@@ -1,0 +1,4 @@
+# Config for the 128-unit MLP row of Table 1.
+hidden: 128
+lr: 0.01
+epochs: 200
